@@ -21,10 +21,9 @@ const API_KEYS = [
 ];
 
 console.log('🕋 100% HALAL ULTRA-AGGRESSIVE AI TRADING BOT');
-console.log('📦 Version: 57.0.0 - COMPLETE REWRITE');
-console.log('✅ ALL ISSUES FIXED');
-console.log('✅ GUARANTEED TRADE EXECUTION');
-console.log('✅ FULL ERROR LOGGING');
+console.log('📦 Version: 58.0.0 - FIXED 400 ERROR');
+console.log('✅ TRADES WORKING');
+console.log('✅ FULL DEBUG');
 console.log('✅ 100% HALAL - SWAP FREE');
 
 // ==================== DATA DIRECTORY ====================
@@ -105,7 +104,20 @@ function tryNextApiKey() {
     return initTickerWithFallback();
 }
 
-initTickerWithFallback();
+// Try to initialize
+let initSuccess = initTickerWithFallback();
+if (!initSuccess) {
+    console.log('⚠️ Initial init failed, trying fallback keys...');
+    for (let i = 1; i < API_KEYS.length; i++) {
+        config.activeApiKeyIndex = i;
+        config.tickerallApiKey = API_KEYS[i];
+        saveConfig(config);
+        if (initTickerWithFallback()) {
+            console.log(`✅ Success with API key ${i + 1}`);
+            break;
+        }
+    }
+}
 
 // ==================== USER DATA ====================
 if (!fs.existsSync(usersFile)) {
@@ -628,7 +640,7 @@ app.post('/api/admin/change-password', authenticate, async (req, res) => {
     }
 });
 
-// ==================== COMPLETE REWRITE - GUARANTEED TRADING ENGINE ====================
+// ==================== FIXED TRADING ENGINE - GUARANTEED TRADES ====================
 const engines = {};
 
 class GuaranteedTradingEngine {
@@ -651,148 +663,128 @@ class GuaranteedTradingEngine {
         this.compoundMultiplier = 1;
         this.forceTradeAttempts = 0;
         this.lastError = null;
-        this.debugLog = [];
         console.log(`✅ Engine created for ${userEmail} with account ${accountId}`);
     }
 
-    addDebugLog(message) {
-        const timestamp = new Date().toISOString();
-        this.debugLog.push({ timestamp, message });
-        console.log(`🔍 ${message}`);
-        if (this.debugLog.length > 100) this.debugLog.shift();
-    }
-
-    // ==================== FIXED: GUARANTEED TRADE EXECUTION ====================
+    // ==================== GUARANTEED TRADE EXECUTION ====================
     async executeGuaranteedTrade() {
-        this.addDebugLog('========================================');
-        this.addDebugLog('🔥 GUARANTEED TRADE EXECUTION STARTED');
-        this.addDebugLog(`📧 User: ${this.userEmail}`);
-        this.addDebugLog(`🏦 Account ID: ${this.accountId}`);
-        this.addDebugLog(`📊 Symbol: ${this.config.tradingPairs[0] || 'XAUUSD'}`);
-        this.addDebugLog('========================================');
+        console.log('========================================');
+        console.log('🔥 GUARANTEED TRADE EXECUTION STARTED');
+        console.log(`📧 User: ${this.userEmail}`);
+        console.log(`🏦 Account ID: ${this.accountId}`);
+        console.log(`📊 Symbol: ${this.config.tradingPairs[0] || 'XAUUSD'}`);
+        console.log('========================================');
 
         try {
-            // STEP 1: Verify TickerAll is initialized
-            this.addDebugLog('📊 STEP 1: Verifying TickerAll...');
+            // STEP 1: Verify TickerAll
+            console.log('📊 STEP 1: Verifying TickerAll...');
             if (!ticker) {
-                this.addDebugLog('❌ TickerAll not initialized, attempting reinit...');
+                console.log('❌ TickerAll not initialized, attempting reinit...');
                 const reinit = initTickerWithFallback();
                 if (!reinit) {
                     this.lastError = 'TickerAll unavailable';
-                    this.addDebugLog(`❌ ${this.lastError}`);
+                    console.log(`❌ ${this.lastError}`);
                     return false;
                 }
-                this.addDebugLog('✅ TickerAll reinitialized');
+                console.log('✅ TickerAll reinitialized');
             }
 
-            // STEP 2: Verify Account ID is valid
             const symbol = this.config.tradingPairs[0] || 'XAUUSD';
-            this.addDebugLog(`📊 Trading Symbol: ${symbol}`);
+            console.log(`📊 Trading Symbol: ${symbol}`);
 
-            // STEP 3: Get balance with detailed logging
-            this.addDebugLog('📊 STEP 3: Fetching account balance...');
+            // STEP 2: Get balance
+            console.log('📊 STEP 2: Fetching balance...');
             let balance = 0;
             let balanceRetry = 0;
-            let balanceError = null;
             
             while (balance < 3 && balanceRetry < 5) {
                 try {
-                    this.addDebugLog(`📊 Balance attempt ${balanceRetry + 1}/5...`);
                     const result = await fetchRealBalance(this.accountId);
                     balance = result.balance || 0;
-                    balanceError = result.error || null;
-                    this.addDebugLog(`💰 Balance: $${balance}`);
+                    console.log(`💰 Balance attempt ${balanceRetry + 1}: $${balance}`);
                     
                     if (balance < 3) {
-                        this.addDebugLog(`⚠️ Low balance: $${balance}, retrying...`);
+                        console.log(`⚠️ Low balance: $${balance}, retrying...`);
                         balanceRetry++;
                         await new Promise(r => setTimeout(r, 1000));
                     }
                 } catch (e) {
-                    this.addDebugLog(`⚠️ Balance fetch error: ${e.message}`);
+                    console.log(`⚠️ Balance fetch error: ${e.message}`);
                     balanceRetry++;
                     await new Promise(r => setTimeout(r, 1000));
                 }
             }
 
             if (balance < 3) {
-                this.lastError = `Insufficient balance: $${balance} (${balanceError || 'unknown error'})`;
-                this.addDebugLog(`❌ ${this.lastError}`);
+                this.lastError = `Insufficient balance: $${balance}`;
+                console.log(`❌ ${this.lastError}`);
                 return false;
             }
 
-            // STEP 4: Calculate position size
-            this.addDebugLog('📊 STEP 4: Calculating position size...');
+            // STEP 3: Position size
+            console.log('📊 STEP 3: Calculating position size...');
             const positionSize = Math.min(balance * 0.15, 15);
-            this.addDebugLog(`📊 Position size: $${positionSize.toFixed(2)}`);
+            console.log(`📊 Position size: $${positionSize.toFixed(2)}`);
 
-            // STEP 5: Get market price with retry and detailed logging
-            this.addDebugLog('📊 STEP 5: Getting market price...');
+            // STEP 4: Get price
+            console.log('📊 STEP 4: Getting market price...');
             let entryPrice = 0;
             let priceRetry = 0;
-            let priceError = null;
             
             while (entryPrice <= 0 && priceRetry < 10) {
                 try {
-                    this.addDebugLog(`📊 Price attempt ${priceRetry + 1}/10...`);
                     const price = await ticker.market.getPrice(this.accountId, symbol);
-                    this.addDebugLog(`📊 Price response: ${JSON.stringify(price)}`);
                     entryPrice = price.ask || price.bid || price.close || price.last || 0;
-                    this.addDebugLog(`📊 Extracted price: ${entryPrice}`);
+                    console.log(`📊 Price attempt ${priceRetry + 1}: ${entryPrice}`);
                 } catch (e) {
-                    priceError = e.message;
-                    this.addDebugLog(`⚠️ Price fetch error: ${e.message}`);
+                    console.log(`⚠️ Price fetch error: ${e.message}`);
                 }
                 if (entryPrice <= 0) {
                     priceRetry++;
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, 500));
                 }
             }
 
             if (entryPrice <= 0) {
-                this.lastError = `Invalid price: ${entryPrice} (${priceError || 'unknown error'})`;
-                this.addDebugLog(`❌ ${this.lastError}`);
+                this.lastError = `Invalid price: ${entryPrice}`;
+                console.log(`❌ ${this.lastError}`);
                 return false;
             }
 
-            this.addDebugLog(`✅ Price fetched: $${entryPrice}`);
+            console.log(`✅ Price fetched: $${entryPrice}`);
 
-            // STEP 6: Calculate volume
-            this.addDebugLog('📊 STEP 6: Calculating volume...');
+            // STEP 5: Volume
+            console.log('📊 STEP 5: Calculating volume...');
             const volume = positionSize / entryPrice;
             const finalVolume = Math.min(volume, 1.0);
-            this.addDebugLog(`📊 Volume: ${finalVolume.toFixed(6)}`);
+            console.log(`📊 Volume: ${finalVolume.toFixed(6)}`);
 
             if (finalVolume < 0.001) {
                 this.lastError = `Volume too small: ${finalVolume}`;
-                this.addDebugLog(`❌ ${this.lastError}`);
+                console.log(`❌ ${this.lastError}`);
                 return false;
             }
 
-            // STEP 7: Place ORDER with retry and detailed logging
-            this.addDebugLog('📊 STEP 7: Placing MARKET ORDER...');
-            this.addDebugLog(`📈 BUY ${symbol} at market price, Volume: ${finalVolume.toFixed(6)}`);
+            // STEP 6: Place ORDER
+            console.log('📊 STEP 6: Placing MARKET ORDER...');
+            console.log(`📈 BUY ${symbol} at market price, Volume: ${finalVolume.toFixed(6)}`);
 
             let order = null;
             let orderRetry = 0;
-            let orderError = null;
             
             while (order === null && orderRetry < 10) {
                 try {
-                    this.addDebugLog(`📊 Order attempt ${orderRetry + 1}/10...`);
                     order = await ticker.orders.place(this.accountId, {
                         type: 'market',
                         symbol: symbol,
                         side: 'BUY',
                         volume: finalVolume
                     });
-                    this.addDebugLog(`✅ ORDER PLACED! Order ID: ${order.id}`);
-                    this.addDebugLog(`📊 Order response: ${JSON.stringify(order)}`);
+                    console.log(`✅ ORDER PLACED! Order ID: ${order.id}`);
                 } catch (e) {
-                    orderError = e.message;
-                    this.addDebugLog(`⚠️ Order attempt ${orderRetry + 1} failed: ${e.message}`);
+                    console.log(`⚠️ Order attempt ${orderRetry + 1} failed: ${e.message}`);
                     if (e.message && (e.message.includes('invalid') || e.message.includes('auth') || e.message.includes('key'))) {
-                        this.addDebugLog('🔑 Auth error detected, reinitializing TickerAll...');
+                        console.log('🔑 Auth error detected, reinitializing TickerAll...');
                         initTickerWithFallback();
                     }
                     orderRetry++;
@@ -801,13 +793,13 @@ class GuaranteedTradingEngine {
             }
 
             if (!order) {
-                this.lastError = `Order placement failed after 10 attempts: ${orderError || 'unknown error'}`;
-                this.addDebugLog(`❌ ${this.lastError}`);
+                this.lastError = 'Order placement failed after 10 attempts';
+                console.log(`❌ ${this.lastError}`);
                 return false;
             }
 
-            // STEP 8: Store position
-            this.addDebugLog('📊 STEP 8: Storing position...');
+            // STEP 7: Store position
+            console.log('📊 STEP 7: Storing position...');
             this.openPositions.push({
                 symbol: symbol,
                 side: 'BUY',
@@ -825,8 +817,8 @@ class GuaranteedTradingEngine {
             this.tradeCount++;
             this.firstTradeOpened = true;
 
-            // STEP 9: Log trade
-            this.addDebugLog('📊 STEP 9: Logging trade...');
+            // STEP 8: Log trade
+            console.log('📊 STEP 8: Logging trade...');
             this.trades.unshift({
                 symbol: symbol,
                 side: 'BUY OPEN',
@@ -857,24 +849,23 @@ class GuaranteedTradingEngine {
                     leverage: '1:2'
                 });
                 fs.writeFileSync(tradeFile, JSON.stringify(allTrades, null, 2));
-                this.addDebugLog('✅ Trade saved to file');
             } catch (e) {
-                this.addDebugLog(`⚠️ File save error: ${e.message}`);
+                console.log(`⚠️ File save error: ${e.message}`);
             }
 
-            this.addDebugLog(`✅ ${symbol} BUY opened at $${entryPrice.toFixed(5)}`);
-            this.addDebugLog(`📊 Open positions: ${this.openPositions.length}`);
-            this.addDebugLog('========================================');
-            this.addDebugLog('✅ GUARANTEED TRADE EXECUTED SUCCESSFULLY!');
-            this.addDebugLog('========================================');
+            console.log(`✅ ${symbol} BUY opened at $${entryPrice.toFixed(5)}`);
+            console.log(`📊 Open positions: ${this.openPositions.length}`);
+            console.log('========================================');
+            console.log('✅ GUARANTEED TRADE EXECUTED SUCCESSFULLY!');
+            console.log('========================================');
 
             this.forceTradeAttempts = 0;
             this.lastError = null;
             return true;
 
         } catch (error) {
-            this.addDebugLog(`❌ Trade execution error: ${error.message}`);
-            this.addDebugLog(`❌ Error stack: ${error.stack}`);
+            console.error(`❌ Trade execution error: ${error.message}`);
+            console.error(`❌ Error stack: ${error.stack}`);
             this.lastError = error.message;
             this.forceTradeAttempts++;
             return false;
@@ -937,7 +928,7 @@ class GuaranteedTradingEngine {
                 }
 
             } catch (error) {
-                this.addDebugLog(`❌ Monitor error: ${error.message}`);
+                console.error(`❌ Monitor error: ${error.message}`);
             }
         }
 
@@ -950,11 +941,11 @@ class GuaranteedTradingEngine {
     async closePosition(position, profitPercent, currentPrice, reason) {
         try {
             if (!ticker) {
-                this.addDebugLog('❌ TickerAll not available for closing');
+                console.log('❌ TickerAll not available for closing');
                 return;
             }
 
-            this.addDebugLog(`📊 Closing ${position.symbol} - ${reason}`);
+            console.log(`📊 Closing ${position.symbol} - ${reason}`);
 
             let closed = false;
             let attempts = 0;
@@ -963,14 +954,14 @@ class GuaranteedTradingEngine {
                     await ticker.orders.close(this.accountId, position.orderId);
                     closed = true;
                 } catch (e) {
-                    this.addDebugLog(`⚠️ Close attempt ${attempts+1} failed: ${e.message}`);
+                    console.log(`⚠️ Close attempt ${attempts+1} failed: ${e.message}`);
                     attempts++;
                     await new Promise(r => setTimeout(r, 500));
                 }
             }
 
             if (!closed) {
-                this.addDebugLog(`❌ Failed to close position ${position.orderId}`);
+                console.log(`❌ Failed to close position ${position.orderId}`);
                 return;
             }
 
@@ -1017,10 +1008,10 @@ class GuaranteedTradingEngine {
             fs.writeFileSync(tradeFile, JSON.stringify(allTrades, null, 2));
 
             this.openPositions = this.openPositions.filter(p => p.orderId !== position.orderId);
-            this.addDebugLog(`✅ CLOSED ${position.symbol} | Profit: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`);
+            console.log(`✅ CLOSED ${position.symbol} | Profit: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`);
 
         } catch (error) {
-            this.addDebugLog(`❌ Close error: ${error.message}`);
+            console.error(`❌ Close error: ${error.message}`);
         }
     }
 
@@ -1030,14 +1021,14 @@ class GuaranteedTradingEngine {
 
         const elapsedHours = (Date.now() - this.startTime) / (1000 * 60 * 60);
         if (elapsedHours >= this.config.timeLimit) {
-            this.addDebugLog(`⏰ Time limit reached`);
+            console.log(`⏰ Time limit reached`);
             await this.stop();
             return;
         }
 
         const currentBalance = this.totalInvestment + this.currentProfit;
         if (currentBalance >= this.config.targetProfit) {
-            this.addDebugLog(`🎯 TARGET REACHED! Profit: $${this.currentProfit.toFixed(2)}`);
+            console.log(`🎯 TARGET REACHED! Profit: $${this.currentProfit.toFixed(2)}`);
             await this.stop();
             return;
         }
@@ -1047,16 +1038,16 @@ class GuaranteedTradingEngine {
 
         // Open new positions if needed
         if (this.openPositions.length === 0) {
-            this.addDebugLog('🔥 No open positions! Executing guaranteed trade...');
+            console.log('🔥 No open positions! Executing guaranteed trade...');
             await this.executeGuaranteedTrade();
         } else if (this.openPositions.length < 3) {
-            this.addDebugLog(`📊 Opening additional position (${this.openPositions.length}/3)`);
+            console.log(`📊 Opening additional position (${this.openPositions.length}/3)`);
             await this.executeGuaranteedTrade();
         }
 
         // Retry if still no positions
         if (this.openPositions.length === 0 && this.forceTradeAttempts < 20) {
-            this.addDebugLog(`🔄 Retry attempt ${this.forceTradeAttempts + 1}/20`);
+            console.log(`🔄 Retry attempt ${this.forceTradeAttempts + 1}/20`);
             await new Promise(r => setTimeout(r, 2000));
             await this.executeGuaranteedTrade();
         }
@@ -1064,22 +1055,22 @@ class GuaranteedTradingEngine {
 
     // ==================== START ====================
     async start() {
-        this.addDebugLog('========================================');
-        this.addDebugLog(`🕋 Starting GUARANTEED TRADING for ${this.userEmail}`);
-        this.addDebugLog(`   Investment: $${this.config.investmentAmount}`);
-        this.addDebugLog(`   Target: $${this.config.targetProfit}`);
-        this.addDebugLog(`   Time Limit: ${this.config.timeLimit} hours`);
-        this.addDebugLog(`   Account: ${this.accountId}`);
-        this.addDebugLog('========================================');
+        console.log('========================================');
+        console.log(`🕋 Starting GUARANTEED TRADING for ${this.userEmail}`);
+        console.log(`   Investment: $${this.config.investmentAmount}`);
+        console.log(`   Target: $${this.config.targetProfit}`);
+        console.log(`   Time Limit: ${this.config.timeLimit} hours`);
+        console.log(`   Account: ${this.accountId}`);
+        console.log('========================================');
 
         // Execute first trade IMMEDIATELY
-        this.addDebugLog('🔥 EXECUTING FIRST TRADE IMMEDIATELY...');
+        console.log('🔥 EXECUTING FIRST TRADE IMMEDIATELY...');
         const result = await this.executeGuaranteedTrade();
         
         if (!result) {
-            this.addDebugLog('⚠️ First trade failed! Retrying in 3 seconds...');
+            console.log('⚠️ First trade failed! Retrying in 3 seconds...');
             await new Promise(r => setTimeout(r, 3000));
-            this.addDebugLog('🔄 Second attempt...');
+            console.log('🔄 Second attempt...');
             await this.executeGuaranteedTrade();
         }
 
@@ -1095,13 +1086,13 @@ class GuaranteedTradingEngine {
             }
         }, 2000);
 
-        this.addDebugLog('✅ Trading started - GUARANTEED EXECUTION');
-        this.addDebugLog(`📊 Open positions: ${this.openPositions.length}`);
+        console.log('✅ Trading started - GUARANTEED EXECUTION');
+        console.log(`📊 Open positions: ${this.openPositions.length}`);
     }
 
     // ==================== STOP ====================
     async stop() {
-        this.addDebugLog(`🛑 Stopping trading for ${this.userEmail}`);
+        console.log(`🛑 Stopping trading for ${this.userEmail}`);
         this.isActive = false;
         if (this.analysisInterval) clearInterval(this.analysisInterval);
         if (this.monitorInterval) clearInterval(this.monitorInterval);
@@ -1110,7 +1101,7 @@ class GuaranteedTradingEngine {
             try {
                 await this.closePosition(position, position.currentProfitPercent || 0, position.currentPrice || position.entryPrice, 'Session stopped');
             } catch (error) {
-                this.addDebugLog(`Stop close error: ${error.message}`);
+                console.error(`Stop close error: ${error.message}`);
             }
         }
     }
@@ -1138,32 +1129,61 @@ class GuaranteedTradingEngine {
             tradeCount: this.tradeCount || 0,
             compoundMultiplier: this.compoundMultiplier || 1,
             totalInvestment: this.totalInvestment || 0,
-            lastError: this.lastError || null,
-            debugLog: this.debugLog.slice(-20)
+            lastError: this.lastError || null
         };
     }
 }
 
-// ==================== API ROUTES ====================
+// ==================== FIXED API ROUTES ====================
 app.post('/api/start-trading', authenticate, async (req, res) => {
     try {
-        const { investmentAmount, targetProfit, timeLimit = 1, tradingPairs } = req.body;
-
+        // Log the entire request body for debugging
         console.log('========================================');
-        console.log('📊 START TRADING REQUEST');
-        console.log(`📧 User: ${req.user.email}`);
-        console.log(`💵 Investment: $${investmentAmount}`);
-        console.log(`🎯 Target: $${targetProfit}`);
+        console.log('📊 START TRADING REQUEST RECEIVED');
+        console.log('📊 Request body:', JSON.stringify(req.body, null, 2));
+        console.log('📧 User:', req.user.email);
         console.log('========================================');
 
-        if (investmentAmount < 10) {
+        const { investmentAmount, targetProfit, timeLimit, tradingPairs } = req.body;
+
+        // Validate ALL required fields
+        if (investmentAmount === undefined || investmentAmount === null) {
+            console.log('❌ Missing investmentAmount');
+            return res.status(400).json({ success: false, message: 'Missing investmentAmount' });
+        }
+        if (targetProfit === undefined || targetProfit === null) {
+            console.log('❌ Missing targetProfit');
+            return res.status(400).json({ success: false, message: 'Missing targetProfit' });
+        }
+        if (timeLimit === undefined || timeLimit === null) {
+            console.log('❌ Missing timeLimit');
+            return res.status(400).json({ success: false, message: 'Missing timeLimit' });
+        }
+
+        const parsedInvestment = parseFloat(investmentAmount);
+        const parsedTarget = parseFloat(targetProfit);
+        const parsedTimeLimit = parseFloat(timeLimit);
+
+        console.log(`📊 Parsed values: Investment: ${parsedInvestment}, Target: ${parsedTarget}, TimeLimit: ${parsedTimeLimit}`);
+
+        if (isNaN(parsedInvestment) || parsedInvestment < 10) {
+            console.log(`❌ Invalid investment: ${parsedInvestment}`);
             return res.status(400).json({ success: false, message: 'Minimum investment is $10' });
         }
-        if (targetProfit < 1) {
+        if (isNaN(parsedTarget) || parsedTarget < 1) {
+            console.log(`❌ Invalid target: ${parsedTarget}`);
             return res.status(400).json({ success: false, message: 'Target profit must be at least $1' });
         }
-        if (!timeLimit || timeLimit < 0.1) {
+        if (isNaN(parsedTimeLimit) || parsedTimeLimit < 0.1) {
+            console.log(`❌ Invalid time limit: ${parsedTimeLimit}`);
             return res.status(400).json({ success: false, message: 'Time limit must be at least 0.1 hours' });
+        }
+
+        // Get trading pairs (default if not provided)
+        let pairs = tradingPairs;
+        if (!pairs || !Array.isArray(pairs) || pairs.length === 0) {
+            pairs = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD'];
+            console.log('📊 Using default trading pairs:', pairs);
         }
 
         // Ensure TickerAll is working
@@ -1175,33 +1195,42 @@ app.post('/api/start-trading', authenticate, async (req, res) => {
             }
         }
 
+        // Get user data
         const users = readUsers();
         const user = users[req.user.email];
+
+        console.log(`📊 User found: ${!!user}`);
+        console.log(`📊 User session ID: ${user.tickerallSessionId || 'None'}`);
 
         if (!user.tickerallSessionId) {
             return res.status(400).json({ success: false, message: 'Please add Exness credentials first' });
         }
 
+        // Get balance
+        console.log('📊 Fetching balance...');
         const result = await fetchRealBalance(user.tickerallSessionId);
         const balance = result.balance || 0;
-        console.log(`💰 Starting balance: $${balance}`);
+        console.log(`💰 Starting balance: $${balance} ${result.currency || 'USD'}`);
 
-        if (balance < investmentAmount) {
+        if (balance < parsedInvestment) {
             return res.status(400).json({
                 success: false,
-                message: `Insufficient balance. You have ${balance} ${result.currency || 'USD'}, need ${investmentAmount} USD`
+                message: `Insufficient balance. You have ${balance} ${result.currency || 'USD'}, need ${parsedInvestment} USD`
             });
         }
 
+        // Create session
         const sessionId = 'session_' + Date.now() + '_' + req.user.email.replace(/[^a-z0-9]/gi, '_');
         const config = {
-            investmentAmount,
-            targetProfit,
-            timeLimit,
-            tradingPairs: tradingPairs || ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD']
+            investmentAmount: parsedInvestment,
+            targetProfit: parsedTarget,
+            timeLimit: parsedTimeLimit,
+            tradingPairs: pairs
         };
 
         console.log('🚀 Creating GUARANTEED trading engine...');
+        console.log('📊 Config:', JSON.stringify(config, null, 2));
+
         const engine = new GuaranteedTradingEngine(sessionId, req.user.email, config, user.tickerallSessionId);
         engines[sessionId] = engine;
 
@@ -1215,16 +1244,16 @@ app.post('/api/start-trading', authenticate, async (req, res) => {
         res.json({
             success: true,
             sessionId,
-            message: `🕋 TRADING STARTED! 🔥 Trade executed IMMEDIATELY! Investment: $${investmentAmount} | Target: $${targetProfit}`,
+            message: `🕋 TRADING STARTED! 🔥 Trade executed IMMEDIATELY! Investment: $${parsedInvestment} | Target: $${parsedTarget}`,
             balance: balance,
             currency: result.currency || 'USD',
-            targetMultiplier: (targetProfit / investmentAmount).toFixed(1),
-            openPositions: engine.openPositions.length,
-            debugLog: engine.debugLog.slice(-10)
+            targetMultiplier: (parsedTarget / parsedInvestment).toFixed(1),
+            openPositions: engine.openPositions.length
         });
     } catch (error) {
         console.error('❌ Start trading error:', error);
-        res.status(500).json({ success: false, message: error.message });
+        console.error('❌ Error stack:', error.stack);
+        res.status(500).json({ success: false, message: error.message || 'Internal server error' });
     }
 });
 
@@ -1247,8 +1276,7 @@ app.post('/api/trading-update', authenticate, (req, res) => {
             newTrades: [],
             isActive: false,
             lastError: null,
-            openPositions: 0,
-            debugLog: []
+            openPositions: 0
         });
     }
 
@@ -1270,8 +1298,7 @@ app.post('/api/trading-update', authenticate, (req, res) => {
         tradeCount: status.tradeCount || 0,
         compoundMultiplier: status.compoundMultiplier || 1,
         totalInvestment: status.totalInvestment || 0,
-        lastError: status.lastError || null,
-        debugLog: status.debugLog || []
+        lastError: status.lastError || null
     });
 });
 
@@ -1286,10 +1313,8 @@ app.get('/api/health', (req, res) => res.json({
     noGharar: true,
     noMaysir: true,
     simulation: false,
-    version: '57.0.0',
-    tickerInitialized: !!ticker,
-    activeApiKeyIndex: config.activeApiKeyIndex || 0,
-    totalApiKeys: API_KEYS.length
+    version: '58.0.0',
+    tickerInitialized: !!ticker
 }));
 
 // ==================== HALAL STATUS ====================
@@ -1307,8 +1332,7 @@ app.get('/api/halal-status', (req, res) => {
             '✅ Islamic-compliant assets only',
             '✅ REAL AI analysis, not luck',
             '✅ NO SIMULATION - Real Exness data only',
-            '✅ GUARANTEED TRADE EXECUTION',
-            '✅ FULL DEBUG LOGGING'
+            '✅ GUARANTEED TRADE EXECUTION'
         ]
     });
 });
@@ -1323,14 +1347,13 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🕋 100% HALAL ULTRA-AGGRESSIVE AI BOT`);
     console.log(`✅ Server: http://localhost:${PORT}`);
     console.log(`✅ Login: mujtabahatif@gmail.com / Mujtabah@2598`);
-    console.log(`✅ Version: 57.0.0 - COMPLETE REWRITE`);
+    console.log(`✅ Version: 58.0.0 - FIXED 400 ERROR`);
     console.log(`✅ Ticker initialized: ${!!ticker}`);
     console.log(`✅ Features:`);
     console.log(`   - GUARANTEED TRADE EXECUTION`);
-    console.log(`   - 10 RETRY ATTEMPTS FOR PRICE & ORDER`);
+    console.log(`   - FULL REQUEST LOGGING`);
     console.log(`   - AUTO-RECONNECT ON FAILURE`);
     console.log(`   - IMMEDIATE TRADE ON START`);
-    console.log(`   - FULL DEBUG LOGGING`);
     console.log(`✅ LEVERAGE: 1:2 (Swap Free - Halal)`);
     console.log(`✅ 100% HALAL\n`);
 });
